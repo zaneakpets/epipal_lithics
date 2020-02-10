@@ -1,6 +1,6 @@
 {
   "exp": {
-    "name": "efficientNetB3_try8"
+    "name": "efficientNetB3_try10"
   },
   "data_loader": {
     "data_dir_train": "data_loader/data/train",
@@ -40,7 +40,7 @@
     "is_use_relu_on_embeddings": false,
     "num_of_fc_at_net_end": 1,
     "embedding_dim": 1536,
-    "pretraind_model": "None",
+    "pretraind_model": "experiments/2020-02-09/efficientNetB3_try7/checkpoints/efficientNetB3_try7-01-0.73.hdf5",
     "img_width": 300,
     "img_height": 300,
     "alpha": 0.25,
@@ -81,8 +81,8 @@
     "checkpoint_verbose": true,
     "tensorboard_write_graph": true,
     "is_save_model": true,
-    "is_run_custom_embbedings_accuracy": false,
-    "is_save_embeddings": false
+    "is_run_custom_embbedings_accuracy": true,
+    "is_save_embeddings": true
   }
 }
 

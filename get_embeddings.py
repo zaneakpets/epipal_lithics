@@ -71,7 +71,7 @@ def main():
         print('Start training the model.')
         #trainer.train()
 
-        trainer.get_accuracy(0, train_generator.class_list)
+        trainer.get_accuracy(0)
 
 
 

@@ -43,18 +43,20 @@ def eval_model_from_csv_files(train_embeddings_csv, valid_embeddings_csv, train_
 
     cls_names,train_labels =  get_class_names_dict_and_labels(train_labels_csv)
     cls_list, valid_labels = get_class_names_dict_and_labels(valid_labels_csv)
+    train_files = get_files_list(train_labels_csv)
+    valid_files = get_files_list(valid_labels_csv)
 
 
 
-    accuracy = eval_model_topk(train_embeddings, valid_embeddings, train_labels, valid_labels, experiment ,cls_names,
-                          is_save_files=True)
+    accuracy = eval_model_topk(train_embeddings, valid_embeddings, train_labels, valid_labels, experiment ,cls_names, train_files, valid_files,
+                          is_save_files=True,  is_save_neighbors = False)
     print('accuracy_site_period top_1_3_5= {0:.3f}, {1:.3f}, {2:.3f}'.format(accuracy[0], accuracy[1], accuracy[2]))
 
 
 
 
-def eval_model_topk(train_embeddings,valid_embeddings,train_labels, valid_labels, experiment,clasee_names, is_save_files = True,
-                    is_save_pair_images = False, is_save_example_images = False):
+def eval_model_topk(train_embeddings,valid_embeddings,train_labels, valid_labels, experiment,clasee_names, train_files, valid_files, is_save_files = True,
+                    is_save_neighbors = False, is_save_example_images = False):
 
     N_neighbours = 50
     neighbours_mat = np.zeros((valid_embeddings.shape[0],N_neighbours),dtype=np.int)
@@ -63,19 +65,6 @@ def eval_model_topk(train_embeddings,valid_embeddings,train_labels, valid_labels
 
     arg_sort_similaity = np.argsort(similaity_mat, axis=1)
     arg_sort_similaity = np.flip(arg_sort_similaity,axis =1)
-
-    if is_save_pair_images or is_save_example_images:
-        valid_files = []
-        train_files = []
-        with open('train_file_names.csv', 'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                train_files.append(row[0])
-
-        with open('valid_file_names.csv', 'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                valid_files.append(row[0])
 
 
     if is_save_example_images:
@@ -88,50 +77,44 @@ def eval_model_topk(train_embeddings,valid_embeddings,train_labels, valid_labels
         gs1 = gridspec.GridSpec(6, 4)
         gs1.update(wspace=0.025, hspace=0.05)  # set the spacing between axes.
 
-    comm = [125]
     similarity_data = np.zeros((valid_embeddings.shape[0], N_neighbours), dtype=np.float32)
     for kk in range(valid_embeddings.shape[0]):
         k = kk + 0
         neighbours_mat[k,:] = train_labels[arg_sort_similaity[k,:N_neighbours]]
         similarity_data[k,:] = similaity_mat[k, arg_sort_similaity[k,:N_neighbours]]
-        if is_save_pair_images and int(valid_labels[k]) in comm :
+        if is_save_neighbors:
             print(k)
             fig, axs = plt.subplots(3, 3, figsize=(15, 15))
             axs = axs.ravel()
             #(ax1, ax2, ax3), (ax4, ax5, ax6),(ax7, ax8, ax9) = axs
-            img_valid = mpimg.imread('../data_loader/data/data_16_6/site_period_top_200_bg_removed/images_600/valid/' + valid_files[k])
+            img_valid = mpimg.imread('../data_loader/data/valid/' + valid_files[k])
             axs[1].imshow(frame_image(img_valid/255,10), aspect='auto')
-            valid_period, valid_site = clasee_names[int(valid_labels[k])].split('_')
-            if ( len(valid_site) > 30):
-                valid_site = valid_site[:30]
-            valid_title = str(int(valid_labels[k])) + ', ' + valid_period + '\n' + valid_site
+            valid_title = clasee_names[int(valid_labels[k])]
             axs[1].set_title(valid_title)
             axs[0].axis('off')
             axs[1].axis('off')
             axs[2].axis('off')
             for m in range(6):
                 axs[m + 3].axis('off')
-                if neighbours_mat[k, m] in comm:
-                    img_train = mpimg.imread('../data_loader/data/data_16_6/site_period_top_200_bg_removed/images_600/train/' + train_files[arg_sort_similaity[k,m]])
-                    if (neighbours_mat[k, m] != int(valid_labels[k])):
-                        axs[m+3].imshow(frame_image(img_train/255,10),aspect='auto')
-                    else:
-                        axs[m + 3].imshow(img_train, aspect='auto')
-                    train_period, train_site = clasee_names[neighbours_mat[k, m]].split('_')
-                    if (len(train_site) > 30):
-                        train_site = train_site[:30]
-                    train_title = str(int(neighbours_mat[k, m])) + ', ' + train_period + '\n' + train_site
-                    axs[m+3].set_title(train_title)
-                    #axs[m+3].axis('off')
+                img_train = mpimg.imread('../data_loader/data/train/' + train_files[arg_sort_similaity[k,m]])
+                if (neighbours_mat[k, m] != int(valid_labels[k])):
+                    axs[m+3].imshow(frame_image(img_train/255,10),aspect='auto')
+                else:
+                    axs[m + 3].imshow(img_train, aspect='auto')
+                train_title = clasee_names[neighbours_mat[k, m]]
+                axs[m+3].set_title(train_title)
+                #axs[m+3].axis('off')
 
             #plt.show()
-            plt.savefig('results/community10/' + valid_period + '_' + valid_site + '_' + str(k) + '.png')
+            #plt.savefig('results/neighbours6/' + valid_period + '_' + valid_site + '_' + str(k) + '.png')
             #assert 0 == 1
-            # if neighbours_mat[k,0] == int(valid_labels[k]):
-            #     plt.savefig('results/neighbors_6/correct_'+ valid_period + '_' + valid_site + '_' + str(k) + '.png')
-            # else:
-            #     plt.savefig('results/neighbors_6/wrong_'+ valid_period + '_' + train_period + '_' + valid_site + '_' + train_site + '_' + str(k) +  '.png')
-            # plt.clf()
+            if neighbours_mat[k,0] == int(valid_labels[k]):
+                plt.savefig('results/neighbours6/correct_'+ clasee_names[int(valid_labels[k])] + '_' + str(k) + '.jpg')
+            else:
+                plt.savefig('results/neighbours6/wrong_'+ clasee_names[int(valid_labels[k])] + '_' + clasee_names[neighbours_mat[k, 0]]+ '_' + str(k) +  '.jpg')
+            #plt.show()
+            #assert 0 == 1
+            plt.clf()
 
         if is_save_example_images:
             if k in examle_images:
@@ -724,14 +707,24 @@ def get_class_names_dict_and_labels(labels_csv_file):
             cnt = cnt + 1
     return clasee_names, np.asarray(labels, dtype=np.int)
 
+def get_files_list(labels_csv_file):
+    cnt = 0
+    files = []
+    with open(labels_csv_file, 'r') as f:
+        reader = csv.reader(f)
+        for row in reader:
+            files.append(row[2])
+            cnt = cnt + 1
+    return files
+
 
 
 
 if __name__ == '__main__':
-    train_embeddings_csv = 'embeddings/efficientNetB3_try7_train.csv'
-    valid_embeddings_csv = 'embeddings/efficientNetB3_try7_valid.csv'
-    train_labesl_csv = 'labels/efficientNetB3_try7_train.csv'
-    valid_labesl_csv = 'labels/efficientNetB3_try7_valid.csv'
+    train_embeddings_csv = 'embeddings/efficientNetB3_try10_train.csv'
+    valid_embeddings_csv = 'embeddings/efficientNetB3_try10_valid.csv'
+    train_labesl_csv = 'labels/efficientNetB3_try10_train.csv'
+    valid_labesl_csv = 'labels/efficientNetB3_try10_valid.csv'
 
 
-    eval_model_from_csv_files(train_embeddings_csv,valid_embeddings_csv,train_labesl_csv,valid_labesl_csv, 'efficientNetB3_try7')
+    eval_model_from_csv_files(train_embeddings_csv,valid_embeddings_csv,train_labesl_csv,valid_labesl_csv, 'efficientNetB3_try10')

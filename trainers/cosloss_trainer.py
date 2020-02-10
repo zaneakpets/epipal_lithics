@@ -138,7 +138,9 @@ class CosLossModelTrainer(BaseTrain):
         # get accuracy, using default generators
         self.config['data_loader']['data_dir_train'] = self.config['data_loader']['data_dir_train_test']
         self.config['data_loader']['data_dir_valid'] = self.config['data_loader']['data_dir_valid_test']
-        self.train_generator =  self.train_generator_testing
+        self.train_generator = get_testing_generator(self.config, True)
+        self.valid_generator = get_testing_generator(self.config, False)
+        #self.train_generator =  self.train_generator_testing
         generators = [self.train_generator, self.valid_generator]
         generators_id = ['_train', '_valid']
 
@@ -153,20 +155,17 @@ class CosLossModelTrainer(BaseTrain):
             labels = np.zeros((num_of_images, 1), dtype=np.int)
             predication = np.zeros((num_of_images, int(self.config.model.embedding_dim)), dtype=np.float32)
 
-            #label_map = (generator.class_indices)
-            #label_map = dict((v, k) for k, v in label_map.items())  # flip k,v
+            label_map = (generator.class_indices)
+            label_map = dict((v, k) for k, v in label_map.items())  # flip k,v
 
             cur_ind = 0
             for k in range(len(generator)):
                 if (k % 10) == 0:
                     print(k)
 
-                x, y_true = generator.__getitem__(k)
-                y_true = y_true[0]
-                y_true = y_true[:,0]
-                #y_true = [label_map[x] for x in y_true_]
-                #y_true = [self.class_list.index(x) for x in y_true]
-
+                x, y_true_ = generator.__getitem__(k)
+                y_true = [label_map[x] for x in y_true_]
+                y_true = [self.class_list.index(x) for x in y_true]
                 y_pred = self.model.predict(x)
 
                 if isSaveSTN:
@@ -197,7 +196,7 @@ class CosLossModelTrainer(BaseTrain):
             if self.config.callbacks.is_save_embeddings:
                 lines = ''
                 for k in range(labels.shape[0]):
-                    lines += str(labels[k,0]) + ',' + self.class_list[labels[k,0]] + '\n'
+                    lines += str(labels[k,0]) + ',' + self.class_list[labels[k,0]] + ',' + generator.filenames[k] + '\n'
                 with open('evaluator/labels/' + self.config.exp.name + generators_id[m] + '.csv', "w") as text_file:
                     text_file.write(lines)
                 #np.savetxt('evaluator/labels/' + self.config.exp.name + generators_id[m] + str(epoch) +  '.tsv', labels, delimiter=',')
